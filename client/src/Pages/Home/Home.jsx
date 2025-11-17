@@ -66,6 +66,15 @@ const Home = () => {
   });
   const navigate = useNavigate();
 
+  const resolveImageSrc = (img) => {
+    if (!img) return "";
+    const lower = img.toLowerCase();
+    if (lower.startsWith("data:")) return img;
+    if (lower.startsWith("http://") || lower.startsWith("https://")) return img;
+    if (img.startsWith("/uploads")) return `${API_BASE}${img}`;
+    return `${API_BASE}/uploads/${img}`;
+  };
+
   useEffect(() => {
     (async () => {
       try {
@@ -247,11 +256,7 @@ const Home = () => {
             {/* 🏙 Image */}
             <div className="relative">
               <img
-                src={
-                  property.images?.[0]?.startsWith("http")
-                    ? property.images[0]
-                    : `${API_BASE}/uploads/${property.images?.[0] || ""}`
-                }
+                src={resolveImageSrc(property.images?.[0])}
                 alt={property.title}
                 className="h-56 w-full object-cover group-hover:scale-105 transition-transform duration-500"
                 onError={(e) =>

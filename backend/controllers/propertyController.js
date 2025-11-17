@@ -2,6 +2,8 @@ import Property from "../models/Property.js";
 import fs from "fs";
 import path from "path";
 
+const isDataUrl = (img = "") => typeof img === "string" && img.trim().toLowerCase().startsWith("data:");
+
 const normalizeImagePath = (img) => {
   if (!img) return "";
   let cleaned = img.replace(/\\/g, "/");
@@ -9,9 +11,34 @@ const normalizeImagePath = (img) => {
   return cleaned;
 };
 
+const encodeFilesToDataUrls = (files = []) =>
+  files
+    .map((file) => {
+      try {
+        const filePath = file?.path || path.join("uploads", file?.filename || "");
+        if (!filePath) return "";
+        const buffer = fs.readFileSync(filePath);
+        const base64 = buffer.toString("base64");
+        const mime = file?.mimetype || "image/jpeg";
+        return `data:${mime};base64,${base64}`;
+      } catch (error) {
+        console.error("Failed to encode image", error);
+        return "";
+      } finally {
+        try {
+          const filePath = file?.path || path.join("uploads", file?.filename || "");
+          if (filePath && fs.existsSync(filePath)) fs.unlinkSync(filePath);
+        } catch (cleanupError) {
+          console.warn("Failed to clean uploaded file", cleanupError.message);
+        }
+      }
+    })
+    .filter(Boolean);
+
 const buildPublicImageUrl = (req, img) => {
   if (!img) return "";
   const lower = img.toLowerCase();
+  if (lower.startsWith("data:")) return img;
   if (lower.startsWith("http://") || lower.startsWith("https://")) return img;
   const normalized = normalizeImagePath(img);
   return `${req.protocol}://${req.get("host")}/uploads/${normalized}`;
@@ -33,7 +60,8 @@ export const addProperty = async (req, res) => {
       if (data[key]) data[key] = JSON.parse(data[key]);
     });
 
-    data.images = req.files?.map((file) => normalizeImagePath(file.filename)) || [];
+    const encodedImages = encodeFilesToDataUrls(req.files);
+    data.images = encodedImages.length ? encodedImages : [];
 
     const prop = await Property.create(data);
     res.status(201).json(withPublicImages(req, prop));
@@ -82,7 +110,8 @@ export const updateProperty = async (req, res) => {
     });
 
     if (req.files?.length > 0) {
-      data.images = req.files.map((file) => normalizeImagePath(file.filename));
+      const encodedImages = encodeFilesToDataUrls(req.files);
+      if (encodedImages.length) data.images = encodedImages;
     }
 
     const updated = await Property.findByIdAndUpdate(req.params.id, data, { new: true });
@@ -101,6 +130,7 @@ export const deleteProperty = async (req, res) => {
     if (!p) return res.status(404).json({ message: "Not found" });
 
     p.images.forEach((img) => {
+      if (isDataUrl(img)) return;
       const imgPath = path.join("uploads", normalizeImagePath(img));
       if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
     });

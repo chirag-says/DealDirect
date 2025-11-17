@@ -51,6 +51,15 @@ const PropertyPage = () => {
   const [subcategories, setSubcategories] = useState([]);
   const [propertyTypes, setPropertyTypes] = useState([]);
 
+  const resolveImageSrc = (img) => {
+    if (!img) return "";
+    const lower = img.toLowerCase();
+    if (lower.startsWith("data:")) return img;
+    if (lower.startsWith("http://") || lower.startsWith("https://")) return img;
+    if (img.startsWith("/uploads")) return `${API_BASE}${img}`;
+    return `${API_BASE}/uploads/${img}`;
+  };
+
   // 🏠 Fetch all properties
   useEffect(() => {
     const fetchProperties = async () => {
@@ -356,11 +365,7 @@ const PropertyPage = () => {
               >
                 <div className="relative h-60 sm:h-64 overflow-hidden">
                   <img
-                    src={
-                      p.images?.[0]?.startsWith("http")
-                        ? p.images[0]
-                        : `${API_BASE}/uploads/${p.images?.[0] || ""}`
-                    }
+                    src={resolveImageSrc(p.images?.[0])}
                     alt={p.title}
                     className="w-full h-full object-cover"
                     onError={(e) =>

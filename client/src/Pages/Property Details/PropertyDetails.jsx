@@ -52,6 +52,7 @@ const PropertyDetails = () => {
   const buildImageUrl = (img) => {
     if (!img) return "";
     const lower = img.toLowerCase();
+    if (lower.startsWith("data:")) return img;
     if (lower.startsWith("http://") || lower.startsWith("https://")) return img;
     if (img.startsWith("/uploads")) return `${API_BASE}${img}`;
     return `${API_BASE}/uploads/${img}`;
