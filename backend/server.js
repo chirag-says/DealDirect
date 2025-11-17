@@ -2,6 +2,7 @@ import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 import connectDB from "./config/db.js";
+import { uploadsDir } from "./utils/paths.js";
 
 import userRoutes from "./routes/userRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
@@ -27,7 +28,7 @@ if (trustProxySetting !== undefined) {
 app.use(cors());
 app.use(cors({ origin: "*" }));
 app.use(express.json());
-app.use("/uploads", express.static("uploads")); // serve images
+app.use("/uploads", express.static(uploadsDir)); // serve images
 
 // Routes
 app.use("/api/propertyTypes", propertyTypeRoutes);
