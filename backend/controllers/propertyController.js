@@ -27,6 +27,21 @@ const normalizeImagePath = (img) => {
   return cleaned;
 };
 
+const baseUrlFromRequest = (req) => {
+  const envBase = process.env.PUBLIC_BASE_URL?.trim();
+  if (envBase) {
+    return envBase.replace(/\/$/, "");
+  }
+
+  const forwardedProto = req.headers["x-forwarded-proto"]?.split(",")[0]?.trim();
+  const forwardedHost = req.headers["x-forwarded-host"]?.split(",")[0]?.trim();
+  const protocol = forwardedProto || req.protocol;
+  const host = forwardedHost || req.get("host");
+
+  if (!protocol || !host) return "";
+  return `${protocol}://${host}`.replace(/\/$/, "");
+};
+
 const encodeFilesToDataUrls = (files = []) =>
   files
     .map((file) => {
@@ -79,7 +94,9 @@ const buildPublicImageUrl = (req, img) => {
   const filePath = path.join("uploads", normalized);
   const dataUrl = fileToDataUrl(filePath);
   if (dataUrl) return dataUrl;
-  return `${req.protocol}://${req.get("host")}/uploads/${normalized}`;
+  const baseUrl = baseUrlFromRequest(req);
+  if (!baseUrl) return `/uploads/${normalized}`;
+  return `${baseUrl}/uploads/${normalized}`;
 };
 
 const withPublicImages = (req, doc) => {

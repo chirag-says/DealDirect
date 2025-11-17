@@ -13,6 +13,17 @@ dotenv.config();
 connectDB();
 
 const app = express();
+
+const trustProxySetting = process.env.TRUST_PROXY;
+if (trustProxySetting !== undefined) {
+	if (trustProxySetting === "true") app.set("trust proxy", true);
+	else if (trustProxySetting === "false") app.set("trust proxy", false);
+	else if (!Number.isNaN(Number(trustProxySetting))) app.set("trust proxy", Number(trustProxySetting));
+	else app.set("trust proxy", trustProxySetting);
+} else {
+	app.set("trust proxy", 1);
+}
+
 app.use(cors());
 app.use(cors({ origin: "*" }));
 app.use(express.json());
