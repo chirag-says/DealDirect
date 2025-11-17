@@ -38,7 +38,7 @@ const PropertyDetails = () => {
     const fetchProperty = async () => {
       try {
         const res = await axios.get(`${API_BASE}/api/properties/${id}`);
-        setProperty(res.data.data);
+        setProperty(res.data);
       } catch (err) {
         console.error(err);
         setError("Failed to load property details");
@@ -49,10 +49,15 @@ const PropertyDetails = () => {
     fetchProperty();
   }, [id, property]);
 
-  const normalizeImages = (imgs = []) =>
-    imgs.map((img) =>
-      img && img.startsWith("/uploads") ? `${API_BASE}${img}` : img
-    );
+  const buildImageUrl = (img) => {
+    if (!img) return "";
+    const lower = img.toLowerCase();
+    if (lower.startsWith("http://") || lower.startsWith("https://")) return img;
+    if (img.startsWith("/uploads")) return `${API_BASE}${img}`;
+    return `${API_BASE}/uploads/${img}`;
+  };
+
+  const imgs = (property.images || []).map(buildImageUrl);
 
   // ---- EMI Calculation ----
   useEffect(() => {
@@ -87,7 +92,6 @@ const PropertyDetails = () => {
       </div>
     );
 
-  const imgs = normalizeImages(property.images || []);
   const price = property.price || property.buyPrice || 0;
   const formattedPrice = price.toLocaleString();
   const whatsappNumber = property.contact?.phone
@@ -104,7 +108,7 @@ const PropertyDetails = () => {
         <div className="lg:w-1/2">
           <div className="relative rounded-2xl overflow-hidden shadow-xl">
             <img
-              src={imgs[activeImage] || property.image || ""}
+              src={imgs[activeImage] || buildImageUrl(property.image)}
               alt={property.title}
               className="w-full h-96 object-cover"
             />

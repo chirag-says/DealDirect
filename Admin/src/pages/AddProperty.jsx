@@ -282,10 +282,7 @@ const AddProperty = () => {
         images.forEach((file) => data.append("images", file));
 
         await axios.post(`${API_BASE_URL}/api/properties/add`, data, {
-          headers: {
-            ...getAuthHeaders(),
-            "Content-Type": "multipart/form-data",
-          },
+          headers: getAuthHeaders(),
         });
 
         toast.success("Property added successfully");
