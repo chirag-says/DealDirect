@@ -5,17 +5,27 @@ import logoSrc from "../assets/dd.jpg";
 const Header = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [adminName, setAdminName] = useState("Admin");
+  const [isEnvAgent, setIsEnvAgent] = useState(false);
 
-  // 🧠 Load admin name from localStorage
   useEffect(() => {
-    const name = localStorage.getItem("adminName") || "Admin";
-    setAdminName(name);
+    try {
+      const storedRaw = localStorage.getItem("adminInfo");
+      const storedInfo = storedRaw ? JSON.parse(storedRaw) : null;
+      if (storedInfo?.name) setAdminName(storedInfo.name);
+      else setAdminName(localStorage.getItem("adminName") || "Admin");
+      setIsEnvAgent(Boolean(storedInfo?.isEnvAgent));
+    } catch (error) {
+      console.error("Failed to parse adminInfo", error);
+      setAdminName(localStorage.getItem("adminName") || "Admin");
+    }
   }, []);
 
   // 🚪 Logout Function
   const handleLogout = () => {
     localStorage.removeItem("adminToken");
     localStorage.removeItem("adminName");
+    localStorage.removeItem("adminInfo");
+    localStorage.removeItem("adminRole");
     window.location.href = "/admin/login";
   };
 
@@ -40,6 +50,11 @@ const Header = () => {
             className="flex items-center space-x-2 bg-blue-50 px-4 py-2 rounded-full hover:bg-blue-100 transition"
           >
             <span className="text-blue-700 font-semibold">{adminName}</span>
+            {isEnvAgent && (
+              <span className="text-xs font-semibold text-blue-600 bg-white px-2 py-0.5 rounded-full border border-blue-200">
+                Agent
+              </span>
+            )}
             <ChevronDownIcon className="h-5 w-5 text-blue-600" />
           </button>
 

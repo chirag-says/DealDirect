@@ -1,5 +1,5 @@
-import React from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import React, { useMemo } from "react";
+import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard,
   Home,
@@ -13,7 +13,17 @@ import {
 import { CiLogout } from "react-icons/ci";
 
 const Sidebar = ({ isOpen, toggleSidebar }) => {
-  const navigate = useNavigate();
+  const adminInfo = useMemo(() => {
+    try {
+      const stored = localStorage.getItem("adminInfo");
+      return stored ? JSON.parse(stored) : null;
+    } catch (error) {
+      console.error("Failed to parse adminInfo", error);
+      return null;
+    }
+  }, []);
+
+  const isEnvAgent = Boolean(adminInfo?.isEnvAgent);
 
   const menuItems = [
     {
@@ -52,9 +62,15 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
       icon: <Home className="h-5 w-5" />,
     },
   ];
+
+  const filteredMenu = isEnvAgent
+    ? menuItems.filter((item) => item.path === "/add-property")
+    : menuItems;
   const handleLogout = () => {
     localStorage.removeItem("adminToken");
     localStorage.removeItem("adminInfo");
+    localStorage.removeItem("adminName");
+    localStorage.removeItem("adminRole");
     window.location.href = "/admin/login"; // Redirect
   };
 
@@ -87,7 +103,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
         {/* Menu items */}
         <nav className="flex-1 overflow-auto mt-2 px-2">
           <ul className="space-y-1">
-            {menuItems.map((item, idx) => (
+            {filteredMenu.map((item, idx) => (
               <li key={idx}>
                 <NavLink
                   to={item.path}

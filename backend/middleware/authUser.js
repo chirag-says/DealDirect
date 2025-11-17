@@ -9,10 +9,23 @@ export const authMiddleware = async (req, res, next) => {
 
     const token = auth.split(" ")[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    if (decoded?.isEnvAgent) {
+      req.user = {
+        _id: decoded.id,
+        id: decoded.id,
+        name: process.env.AGENT_NAME || "DealDirect Agent",
+        email: process.env.AGENT_EMAIL || decoded.email,
+        role: "agent",
+        isEnvAgent: true,
+      };
+      return next();
+    }
+
     const user = await User.findById(decoded.id).select("-password");
     if (!user) return res.status(401).json({ message: "User not found" });
 
-    req.user = user; // attach user to request
+    req.user = { ...user.toObject(), role: user.role || decoded.role || "user" }; // attach user to request
     next();
   } catch (err) {
     console.error("Auth error:", err);

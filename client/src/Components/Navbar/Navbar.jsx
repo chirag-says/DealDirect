@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AiOutlineUser, AiOutlineMenu, AiOutlineClose } from "react-icons/ai";
 import logo from "../../assets/dealdirect_logo.webp";
@@ -21,19 +21,56 @@ function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
+  const syncUserFromStorage = useCallback(() => {
+    try {
+      const storedUser = localStorage.getItem("user");
+      setUser(storedUser ? JSON.parse(storedUser) : null);
+    } catch (error) {
+      console.error("Failed to parse user from storage", error);
+      setUser(null);
     }
   }, []);
+
+  useEffect(() => {
+    syncUserFromStorage();
+    const handleStorage = () => syncUserFromStorage();
+    window.addEventListener("storage", handleStorage);
+    window.addEventListener("auth-change", handleStorage);
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener("auth-change", handleStorage);
+    };
+  }, [syncUserFromStorage]);
 
   const handleLogout = () => {
     localStorage.removeItem("user");
     localStorage.removeItem("token");
     setUser(null);
+    window.dispatchEvent(new Event("auth-change"));
     navigate("/login");
   };
+
+  const derivedRole = useMemo(() => {
+    if (!user) return "user";
+    const fallbacks = user.role || user.accountType || user.userType || user.type;
+    if (typeof fallbacks === "string") return fallbacks.toLowerCase();
+    if (user.isAgent) return "agent";
+    return "user";
+  }, [user]);
+
+  const isAgent = derivedRole === "agent";
+  const agentUploadUrl = import.meta.env.VITE_AGENT_UPLOAD_URL || "/admin/add-property";
+  const isExternalAgentUrl = /^https?:\/\//i.test(agentUploadUrl || "");
+  const showAgentUpload = isAgent && Boolean(agentUploadUrl);
+
+  const handleAgentUploadNavigation = useCallback(() => {
+    if (!showAgentUpload) return;
+    if (isExternalAgentUrl) {
+      window.location.href = agentUploadUrl;
+      return;
+    }
+    navigate(agentUploadUrl);
+  }, [agentUploadUrl, isExternalAgentUrl, navigate, showAgentUpload]);
 
   // Buy Mega Menu Data - 5 Sections
   const buyMenuSections = [
@@ -212,12 +249,23 @@ function Navbar() {
           >
             Contact
           </Link>
- <Link
-            to="/properties"
-            className="text-gray-700 hover:text-blue-600 font-medium transition text-[15px]"
-          >
-            Properties
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link
+              to="/properties"
+              className="text-gray-700 hover:text-blue-600 font-medium transition text-[15px]"
+            >
+              Properties
+            </Link>
+            {showAgentUpload && (
+              <button
+                type="button"
+                onClick={handleAgentUploadNavigation}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-md hover:bg-blue-700 transition inline-flex"
+              >
+                Upload Property
+              </button>
+            )}
+          </div>
           {user ? (
             <div className="flex items-center space-x-3">
               <span className="text-gray-700 font-medium text-sm">
@@ -280,6 +328,18 @@ function Navbar() {
           >
             Properties
           </Link>
+          {showAgentUpload && (
+            <button
+              type="button"
+              className="text-gray-700 font-medium hover:text-blue-700 transition py-2 border-b text-left"
+              onClick={() => {
+                handleAgentUploadNavigation();
+                if (!isExternalAgentUrl) toggleMenu();
+              }}
+            >
+              Upload Property
+            </button>
+          )}
           <Link
             to="/agreements"
             onClick={toggleMenu}

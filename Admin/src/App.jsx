@@ -18,10 +18,27 @@ import AllProperty from "./pages/AllProperty";
 import AllCategory from "./pages/AllCategory";
 import AdminLogin from "./pages/AdminLogin";
 
+const getStoredAdminInfo = () => {
+  try {
+    const stored = localStorage.getItem("adminInfo");
+    return stored ? JSON.parse(stored) : null;
+  } catch (error) {
+    console.error("Failed to parse adminInfo", error);
+    return null;
+  }
+};
+
 // ✅ Protected Route Component
-const ProtectedRoute = ({ children }) => {
-  const token = localStorage.getItem("adminToken"); // token saved after login
-  return token ? children : <Navigate to="/admin/login" replace />;
+const ProtectedRoute = ({ children, allowEnvAgent = true }) => {
+  const token = localStorage.getItem("adminToken");
+  if (!token) return <Navigate to="/admin/login" replace />;
+
+  const adminInfo = getStoredAdminInfo();
+  if (adminInfo?.isEnvAgent && !allowEnvAgent) {
+    return <Navigate to="/add-property" replace />;
+  }
+
+  return children;
 };
 
 const Layout = ({ isSidebarOpen, toggleSidebar, children }) => {
@@ -93,7 +110,7 @@ function App() {
           <Route
             path="/dashboard"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowEnvAgent={false}>
                 <Dashboard />
               </ProtectedRoute>
             }
@@ -101,7 +118,7 @@ function App() {
           <Route
             path="/add-property"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowEnvAgent>
                 <AddProperty />
               </ProtectedRoute>
             }
@@ -109,7 +126,7 @@ function App() {
           <Route
             path="/add-category"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowEnvAgent={false}>
                 <AddCategory />
               </ProtectedRoute>
             }
@@ -117,7 +134,7 @@ function App() {
           <Route
             path="/add-subcategory"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowEnvAgent={false}>
                 <AddSubCategory />
               </ProtectedRoute>
             }
@@ -125,7 +142,7 @@ function App() {
           <Route
             path="/all-clients"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowEnvAgent={false}>
                 <AllClients />
               </ProtectedRoute>
             }
@@ -133,7 +150,7 @@ function App() {
           <Route
             path="/all-properties"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowEnvAgent={false}>
                 <AllProperty />
               </ProtectedRoute>
             }
@@ -141,7 +158,7 @@ function App() {
           <Route
             path="/all-category"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowEnvAgent={false}>
                 <AllCategory />
               </ProtectedRoute>
             }

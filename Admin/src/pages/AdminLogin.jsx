@@ -29,10 +29,13 @@ const AdminLogin = () => {
       // ✅ Save token and name properly
       localStorage.setItem("adminToken", data.token);
       localStorage.setItem("adminName", data.admin.name);
+      if (data.admin?.role) {
+        localStorage.setItem("adminRole", data.admin.role);
+      }
       localStorage.setItem("adminInfo", JSON.stringify(data.admin));
 
-      // ✅ Redirect to dashboard
-      navigate("/dashboard");
+      const redirectPath = data.admin?.isEnvAgent ? "/add-property" : "/dashboard";
+      navigate(redirectPath);
     } catch (error) {
       toast.error(error.response?.data?.message || "Login failed");
     } finally {

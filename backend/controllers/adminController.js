@@ -40,6 +40,44 @@ export const registerAdmin = async (req, res) => {
 export const loginAdmin = async (req, res) => {
   try {
     const { email, password } = req.body;
+    const normalizedInputEmail = (email || "").trim().toLowerCase();
+    const normalizedEnvEmail = (process.env.AGENT_EMAIL || "").trim().toLowerCase();
+
+    if (normalizedEnvEmail && normalizedInputEmail === normalizedEnvEmail) {
+      if (!process.env.AGENT_PASSWORD) {
+        return res
+          .status(500)
+          .json({ message: "Agent password not configured on server" });
+      }
+
+      if (password !== process.env.AGENT_PASSWORD) {
+        return res.status(400).json({ message: "Invalid credentials" });
+      }
+
+      const token = jwt.sign(
+        {
+          id: "env-agent-admin",
+          role: "agent",
+          isEnvAgentAdmin: true,
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: "7d" }
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: "Login successful",
+        token,
+        admin: {
+          _id: "env-agent-admin",
+          name: process.env.AGENT_NAME || "DealDirect Agent",
+          email: process.env.AGENT_EMAIL,
+          role: "agent",
+          isEnvAgent: true,
+          allowedRoutes: ["/add-property"],
+        },
+      });
+    }
 
     const admin = await Admin.findOne({ email });
     if (!admin) {
@@ -51,7 +89,7 @@ export const loginAdmin = async (req, res) => {
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
-    const token = jwt.sign({ id: admin._id }, process.env.JWT_SECRET, {
+    const token = jwt.sign({ id: admin._id, role: "admin" }, process.env.JWT_SECRET, {
       expiresIn: "7d",
     });
 
@@ -63,6 +101,8 @@ export const loginAdmin = async (req, res) => {
         _id: admin._id,
         name: admin.name,
         email: admin.email,
+        role: "admin",
+        isEnvAgent: false,
       },
     });
   } catch (error) {

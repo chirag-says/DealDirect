@@ -27,6 +27,12 @@ lerna-debug.log*
 .env.*
 !.env.example
 !*/.env.example
+Admin/.env
+Admin/.env.*
+client/.env
+client/.env.*
+backend/.env
+backend/.env.*
 
 # Local data/uploads
 uploads/
@@ -46,3 +52,9 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+.eslintcache
+*.tsbuildinfo
+*.local
+*.pem
+*.crt
+*.key

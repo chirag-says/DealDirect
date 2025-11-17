@@ -21,6 +21,7 @@ export default function Login() {
 
       localStorage.setItem("token", token);
       localStorage.setItem("user", JSON.stringify(user));
+      window.dispatchEvent(new Event("auth-change"));
 
       toast.success("Login successful!");
       navigate("/");
