@@ -4,7 +4,7 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 
-const API_URL = "http://localhost:9000";
+const API_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:9000";
 
 const AllProperty = () => {
   const [properties, setProperties] = useState([]);
@@ -89,8 +89,12 @@ const AllProperty = () => {
   };
 
   // Image Handler
-  const getImage = (img) => {
-    if (!img) return "https://via.placeholder.com/80";
+  const resolveImage = (img) => {
+    if (!img) return "https://via.placeholder.com/120x90?text=No+Image";
+    const lower = img.toLowerCase();
+    if (lower.startsWith("data:")) return img;
+    if (lower.startsWith("http://") || lower.startsWith("https://")) return img;
+    if (img.startsWith("/uploads")) return `${API_URL}${img}`;
     return `${API_URL}/uploads/${img}`;
   };
 
@@ -141,7 +145,7 @@ const AllProperty = () => {
                 <tr key={item._id} className="border-b hover:bg-gray-50 transition">
                   <td className="py-3 px-4">
                     <img
-                      src={getImage(item.images?.[0])}
+                      src={resolveImage(item.images?.[0])}
                       alt={item.title}
                       className="w-16 h-14 rounded-md object-cover border"
                     />

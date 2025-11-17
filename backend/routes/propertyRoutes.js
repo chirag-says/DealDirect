@@ -16,12 +16,8 @@ import { protectAdmin } from "../middleware/authAdmin.js";
 
 const router = express.Router();
 
-// 🖼️ Multer config
-const storage = multer.diskStorage({
-  destination: "uploads/",
-  filename: (req, file, cb) => cb(null, Date.now() + "-" + file.originalname),
-});
-const upload = multer({ storage });
+// 🖼️ Multer config (memory storage so nothing persists locally)
+const upload = multer({ storage: multer.memoryStorage() });
 
 // ✅ Routes
 router.post("/add", protectAdmin, upload.array("images", 10), addProperty);

@@ -26,6 +26,14 @@ const createInitialFormState = () => ({
   flooring: [],
 });
 
+const fileToBase64 = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
 const AddProperty = () => {
   const [formData, setFormData] = useState(() => createInitialFormState());
 
@@ -280,6 +288,11 @@ const AddProperty = () => {
         });
 
         images.forEach((file) => data.append("images", file));
+
+        if (images.length) {
+          const inlineImages = await Promise.all(images.map(fileToBase64));
+          data.append("inlineImages", JSON.stringify(inlineImages));
+        }
 
         await axios.post(`${API_BASE_URL}/api/properties/add`, data, {
           headers: getAuthHeaders(),

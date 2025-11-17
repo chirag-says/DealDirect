@@ -4,6 +4,22 @@ import path from "path";
 
 const isDataUrl = (img = "") => typeof img === "string" && img.trim().toLowerCase().startsWith("data:");
 
+const extensionToMime = {
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".png": "image/png",
+  ".webp": "image/webp",
+  ".gif": "image/gif",
+};
+
+const fileToDataUrl = (filePath) => {
+  if (!fs.existsSync(filePath)) return "";
+  const ext = path.extname(filePath).toLowerCase();
+  const mimeType = extensionToMime[ext] || "image/jpeg";
+  const buffer = fs.readFileSync(filePath);
+  return `data:${mimeType};base64,${buffer.toString("base64")}`;
+};
+
 const normalizeImagePath = (img) => {
   if (!img) return "";
   let cleaned = img.replace(/\\/g, "/");
@@ -15,9 +31,16 @@ const encodeFilesToDataUrls = (files = []) =>
   files
     .map((file) => {
       try {
-        const filePath = file?.path || path.join("uploads", file?.filename || "");
-        if (!filePath) return "";
-        const buffer = fs.readFileSync(filePath);
+        let buffer = file?.buffer;
+        let cleanupPath = null;
+
+        if (!buffer) {
+          const filePath = file?.path || (file?.filename ? path.join("uploads", file.filename) : null);
+          if (!filePath || !fs.existsSync(filePath)) return "";
+          buffer = fs.readFileSync(filePath);
+          cleanupPath = filePath;
+        }
+
         const base64 = buffer.toString("base64");
         const mime = file?.mimetype || "image/jpeg";
         return `data:${mime};base64,${base64}`;
@@ -25,15 +48,27 @@ const encodeFilesToDataUrls = (files = []) =>
         console.error("Failed to encode image", error);
         return "";
       } finally {
-        try {
-          const filePath = file?.path || path.join("uploads", file?.filename || "");
-          if (filePath && fs.existsSync(filePath)) fs.unlinkSync(filePath);
-        } catch (cleanupError) {
-          console.warn("Failed to clean uploaded file", cleanupError.message);
+        // Clean up legacy temp files if any were created
+        if (cleanupPath && fs.existsSync(cleanupPath)) {
+          fs.unlinkSync(cleanupPath);
         }
       }
     })
     .filter(Boolean);
+
+const extractInlineImages = (payload) => {
+  const raw = payload?.inlineImages;
+  if (!raw) return [];
+  try {
+    const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+    if (Array.isArray(parsed)) {
+      return parsed.filter((img) => typeof img === "string" && img.trim().startsWith("data:"));
+    }
+  } catch (error) {
+    console.error("Failed to parse inline images", error.message);
+  }
+  return [];
+};
 
 const buildPublicImageUrl = (req, img) => {
   if (!img) return "";
@@ -41,6 +76,9 @@ const buildPublicImageUrl = (req, img) => {
   if (lower.startsWith("data:")) return img;
   if (lower.startsWith("http://") || lower.startsWith("https://")) return img;
   const normalized = normalizeImagePath(img);
+  const filePath = path.join("uploads", normalized);
+  const dataUrl = fileToDataUrl(filePath);
+  if (dataUrl) return dataUrl;
   return `${req.protocol}://${req.get("host")}/uploads/${normalized}`;
 };
 
@@ -60,8 +98,14 @@ export const addProperty = async (req, res) => {
       if (data[key]) data[key] = JSON.parse(data[key]);
     });
 
-    const encodedImages = encodeFilesToDataUrls(req.files);
-    data.images = encodedImages.length ? encodedImages : [];
+    const inlineImages = extractInlineImages(data);
+    if (inlineImages.length) {
+      data.images = inlineImages;
+    } else {
+      const encodedImages = encodeFilesToDataUrls(req.files);
+      data.images = encodedImages.length ? encodedImages : [];
+    }
+    delete data.inlineImages;
 
     const prop = await Property.create(data);
     res.status(201).json(withPublicImages(req, prop));
@@ -109,10 +153,14 @@ export const updateProperty = async (req, res) => {
       if (data[key]) data[key] = JSON.parse(data[key]);
     });
 
-    if (req.files?.length > 0) {
+    const inlineImages = extractInlineImages(data);
+    if (inlineImages.length) {
+      data.images = inlineImages;
+    } else if (req.files?.length > 0) {
       const encodedImages = encodeFilesToDataUrls(req.files);
       if (encodedImages.length) data.images = encodedImages;
     }
+    delete data.inlineImages;
 
     const updated = await Property.findByIdAndUpdate(req.params.id, data, { new: true });
 
