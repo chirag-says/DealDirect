@@ -1,0 +1,109 @@
+import React, { useState } from "react";
+import axios from "axios";
+import { toast } from "react-toastify";
+import { useNavigate } from "react-router-dom";
+import { Lock, Mail } from "lucide-react";
+
+const API_URL = import.meta.env.VITE_API_BASE_URL;
+
+const AdminLogin = () => {
+  const navigate = useNavigate();
+  const [form, setForm] = useState({ email: "", password: "" });
+  const [loading, setLoading] = useState(false);
+
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!form.email || !form.password) {
+      return toast.warn("Please fill all fields");
+    }
+
+    try {
+      setLoading(true);
+      const { data } = await axios.post(`${API_URL}/api/admin/login`, form);
+      toast.success("Login successful!");
+
+      // ✅ Save token and name properly
+      localStorage.setItem("adminToken", data.token);
+      localStorage.setItem("adminName", data.admin.name);
+      localStorage.setItem("adminInfo", JSON.stringify(data.admin));
+
+      // ✅ Redirect to dashboard
+      navigate("/dashboard");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Login failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center ">
+      <div className="bg-white shadow-xl rounded-2xl w-full max-w-md p-8 border border-gray-100">
+        <h2 className="text-2xl font-bold text-gray-800 text-center mb-6">
+          👨‍💼 Admin Login
+        </h2>
+
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Email */}
+          <div>
+            <label className="block text-gray-700 font-medium mb-1">
+              Email Address
+            </label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-3.5 text-gray-400 w-5 h-5" />
+              <input
+                type="email"
+                name="email"
+                value={form.email}
+                onChange={handleChange}
+                placeholder="admin@example.com"
+                className="w-full border border-gray-300 pl-10 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-lg p-3 text-gray-800 outline-none transition-all"
+              />
+            </div>
+          </div>
+
+          {/* Password */}
+          <div>
+            <label className="block text-gray-700 font-medium mb-1">
+              Password
+            </label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-3.5 text-gray-400 w-5 h-5" />
+              <input
+                type="password"
+                name="password"
+                value={form.password}
+                onChange={handleChange}
+                placeholder="Enter your password"
+                className="w-full border border-gray-300 pl-10 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-lg p-3 text-gray-800 outline-none transition-all"
+              />
+            </div>
+          </div>
+
+          {/* Submit */}
+          <button
+            type="submit"
+            disabled={loading}
+            className={`w-full py-3 rounded-lg text-white font-semibold transition-all ${
+              loading
+                ? "bg-blue-400 cursor-not-allowed"
+                : "bg-blue-600 hover:bg-blue-700 shadow-md"
+            }`}
+          >
+            {loading ? "Logging in..." : "Login"}
+          </button>
+        </form>
+
+        <p className="text-center text-sm text-gray-500 mt-6">
+          © {new Date().getFullYear()} PropertyDeal Admin Panel
+        </p>
+      </div>
+    </div>
+  );
+};
+
+export default AdminLogin;
