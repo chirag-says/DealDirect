@@ -2,6 +2,28 @@ import Property from "../models/Property.js";
 import fs from "fs";
 import path from "path";
 
+const normalizeImagePath = (img) => {
+  if (!img) return "";
+  let cleaned = img.replace(/\\/g, "/");
+  cleaned = cleaned.replace(/^\/?uploads\//i, "");
+  return cleaned;
+};
+
+const buildPublicImageUrl = (req, img) => {
+  if (!img) return "";
+  const lower = img.toLowerCase();
+  if (lower.startsWith("http://") || lower.startsWith("https://")) return img;
+  const normalized = normalizeImagePath(img);
+  return `${req.protocol}://${req.get("host")}/uploads/${normalized}`;
+};
+
+const withPublicImages = (req, doc) => {
+  if (!doc) return doc;
+  const plain = doc.toObject ? doc.toObject() : doc;
+  plain.images = (plain.images || []).map((img) => buildPublicImageUrl(req, img));
+  return plain;
+};
+
 // Add Property
 export const addProperty = async (req, res) => {
   try {
@@ -11,10 +33,10 @@ export const addProperty = async (req, res) => {
       if (data[key]) data[key] = JSON.parse(data[key]);
     });
 
-    data.images = req.files?.map((file) => file.filename) || [];
+    data.images = req.files?.map((file) => normalizeImagePath(file.filename)) || [];
 
     const prop = await Property.create(data);
-    res.status(201).json(prop);
+    res.status(201).json(withPublicImages(req, prop));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -29,7 +51,7 @@ export const getProperties = async (req, res) => {
       .populate("propertyType")
       .sort({ createdAt: -1 });
 
-    res.json(list);
+    res.json(list.map((item) => withPublicImages(req, item)));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -45,7 +67,7 @@ export const getPropertyById = async (req, res) => {
 
     if (!prop) return res.status(404).json({ message: "Not found" });
 
-    res.json(prop);
+    res.json(withPublicImages(req, prop));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -60,12 +82,12 @@ export const updateProperty = async (req, res) => {
     });
 
     if (req.files?.length > 0) {
-      data.images = req.files.map(file => file.filename);
+      data.images = req.files.map((file) => normalizeImagePath(file.filename));
     }
 
     const updated = await Property.findByIdAndUpdate(req.params.id, data, { new: true });
 
-    res.json(updated);
+    res.json(withPublicImages(req, updated));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -79,7 +101,7 @@ export const deleteProperty = async (req, res) => {
     if (!p) return res.status(404).json({ message: "Not found" });
 
     p.images.forEach((img) => {
-      const imgPath = path.join("uploads", img);
+      const imgPath = path.join("uploads", normalizeImagePath(img));
       if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
     });
 
@@ -118,7 +140,7 @@ export const getAllPropertiesList = async (req, res) => {
       .sort({ createdAt: -1 });
       
 
-    res.status(200).json({ success: true, data: properties });
+    res.status(200).json({ success: true, data: properties.map((item) => withPublicImages(req, item)) });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -187,7 +209,7 @@ export const searchProperties = async (req, res) => {
     ]);
 
     res.json({
-      data,
+      data: data.map((item) => withPublicImages(req, item)),
       total,
       page: Number(page),
       pages: Math.ceil(total / limit),
@@ -234,7 +256,7 @@ export const filterProperties = async (req, res) => {
     else if (sort === "priceDesc") properties.sort((a, b) => b.price - a.price);
     else properties.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-    res.json({ success: true, data: properties });
+    res.json({ success: true, data: properties.map((item) => withPublicImages(req, item)) });
   } catch (err) {
     console.error("Error in filterProperties:", err);
     res.status(500).json({ success: false, error: err.message });
