@@ -1,7 +1,6 @@
 import Property from "../models/Property.js";
 import fs from "fs";
 import path from "path";
-import { uploadsDir } from "../utils/paths.js";
 
 const isDataUrl = (img = "") => typeof img === "string" && img.trim().toLowerCase().startsWith("data:");
 
@@ -14,11 +13,10 @@ const extensionToMime = {
 };
 
 const fileToDataUrl = (filePath) => {
-  const absolutePath = path.isAbsolute(filePath) ? filePath : path.join(uploadsDir, filePath);
-  if (!fs.existsSync(absolutePath)) return "";
-  const ext = path.extname(absolutePath).toLowerCase();
+  if (!fs.existsSync(filePath)) return "";
+  const ext = path.extname(filePath).toLowerCase();
   const mimeType = extensionToMime[ext] || "image/jpeg";
-  const buffer = fs.readFileSync(absolutePath);
+  const buffer = fs.readFileSync(filePath);
   return `data:${mimeType};base64,${buffer.toString("base64")}`;
 };
 
@@ -29,21 +27,6 @@ const normalizeImagePath = (img) => {
   return cleaned;
 };
 
-const baseUrlFromRequest = (req) => {
-  const envBase = process.env.PUBLIC_BASE_URL?.trim();
-  if (envBase) {
-    return envBase.replace(/\/$/, "");
-  }
-
-  const forwardedProto = req.headers["x-forwarded-proto"]?.split(",")[0]?.trim();
-  const forwardedHost = req.headers["x-forwarded-host"]?.split(",")[0]?.trim();
-  const protocol = forwardedProto || req.protocol;
-  const host = forwardedHost || req.get("host");
-
-  if (!protocol || !host) return "";
-  return `${protocol}://${host}`.replace(/\/$/, "");
-};
-
 const encodeFilesToDataUrls = (files = []) =>
   files
     .map((file) => {
@@ -52,12 +35,10 @@ const encodeFilesToDataUrls = (files = []) =>
         let cleanupPath = null;
 
         if (!buffer) {
-          const filePath = file?.path || (file?.filename ? path.join(uploadsDir, file.filename) : null);
-          if (!filePath) return "";
-          const absolutePath = path.isAbsolute(filePath) ? filePath : path.join(uploadsDir, filePath);
-          if (!fs.existsSync(absolutePath)) return "";
-          buffer = fs.readFileSync(absolutePath);
-          cleanupPath = absolutePath;
+          const filePath = file?.path || (file?.filename ? path.join("uploads", file.filename) : null);
+          if (!filePath || !fs.existsSync(filePath)) return "";
+          buffer = fs.readFileSync(filePath);
+          cleanupPath = filePath;
         }
 
         const base64 = buffer.toString("base64");
@@ -95,12 +76,10 @@ const buildPublicImageUrl = (req, img) => {
   if (lower.startsWith("data:")) return img;
   if (lower.startsWith("http://") || lower.startsWith("https://")) return img;
   const normalized = normalizeImagePath(img);
-  const filePath = path.join(uploadsDir, normalized);
+  const filePath = path.join("uploads", normalized);
   const dataUrl = fileToDataUrl(filePath);
   if (dataUrl) return dataUrl;
-  const baseUrl = baseUrlFromRequest(req);
-  if (!baseUrl) return `/uploads/${normalized}`;
-  return `${baseUrl}/uploads/${normalized}`;
+  return `${req.protocol}://${req.get("host")}/uploads/${normalized}`;
 };
 
 const withPublicImages = (req, doc) => {
@@ -200,7 +179,7 @@ export const deleteProperty = async (req, res) => {
 
     p.images.forEach((img) => {
       if (isDataUrl(img)) return;
-      const imgPath = path.join(uploadsDir, normalizeImagePath(img));
+      const imgPath = path.join("uploads", normalizeImagePath(img));
       if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
     });
 

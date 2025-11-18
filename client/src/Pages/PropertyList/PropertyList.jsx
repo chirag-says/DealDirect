@@ -63,16 +63,21 @@ const PropertyPage = () => {
   // 🏠 Fetch all properties
   useEffect(() => {
     const fetchProperties = async () => {
-      try {
-        setLoading(true);
-        const res = await axios.get(`${API_BASE}/api/properties/property-list`);
-        setProperties(res.data.data || []);
-      } catch (err) {
-        console.error("Error fetching properties:", err);
-      } finally {
-        setLoading(false);
+    try {
+      const res = await axios.get(`${API_URL}/api/properties/list`);
+
+      if (Array.isArray(res.data)) {
+        setProperties(res.data);
+      } else {
+        toast.error("Unexpected response from server");
       }
-    };
+    } catch (error) {
+      console.error(error);
+      toast.error("Error fetching properties");
+    } finally {
+      setLoading(false);
+    }
+  };
     fetchProperties();
   }, []);
 

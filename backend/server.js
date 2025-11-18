@@ -2,7 +2,6 @@ import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 import connectDB from "./config/db.js";
-import { uploadsDir } from "./utils/paths.js";
 
 import userRoutes from "./routes/userRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
@@ -14,21 +13,10 @@ dotenv.config();
 connectDB();
 
 const app = express();
-
-const trustProxySetting = process.env.TRUST_PROXY;
-if (trustProxySetting !== undefined) {
-	if (trustProxySetting === "true") app.set("trust proxy", true);
-	else if (trustProxySetting === "false") app.set("trust proxy", false);
-	else if (!Number.isNaN(Number(trustProxySetting))) app.set("trust proxy", Number(trustProxySetting));
-	else app.set("trust proxy", trustProxySetting);
-} else {
-	app.set("trust proxy", 1);
-}
-
 app.use(cors());
 app.use(cors({ origin: "*" }));
 app.use(express.json());
-app.use("/uploads", express.static(uploadsDir)); // serve images
+app.use("/uploads", express.static("uploads")); // serve images
 
 // Routes
 app.use("/api/propertyTypes", propertyTypeRoutes);

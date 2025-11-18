@@ -35,18 +35,23 @@ const PropertyDetails = () => {
   useEffect(() => {
     if (property) return;
 
-    const fetchProperty = async () => {
-      try {
-        const res = await axios.get(`${API_BASE}/api/properties/${id}`);
-        setProperty(res.data);
-      } catch (err) {
-        console.error(err);
-        setError("Failed to load property details");
-      } finally {
-        setLoading(false);
+    const fetchProperties = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/api/properties/list`);
+
+      if (Array.isArray(res.data)) {
+        setProperties(res.data);
+      } else {
+        toast.error("Unexpected response from server");
       }
-    };
-    fetchProperty();
+    } catch (error) {
+      console.error(error);
+      toast.error("Error fetching properties");
+    } finally {
+      setLoading(false);
+    }
+  };
+  fetchProperty();
   }, [id, property]);
 
   const buildImageUrl = (img) => {
